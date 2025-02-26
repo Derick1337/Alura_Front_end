@@ -2,33 +2,56 @@ const searchInput = document.getElementById('search-input');
 const resultArtist = document.getElementById("result-artist");
 const resultPlaylist = document.getElementById('result-playlists');
 
-function requestApi(searchTerm) {
-    const url = `http://localhost:3000/artists?name_like=${searchTerm}`
-    fetch(url)
-        .then((response) => response.json())
-        .then((result) => displayResults(result))
+async function requestApi(searchTerm) {
+    try {
+        const url = `http://localhost:3000/artists?name_like=${searchTerm}`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            throw new Error(`Erro na requisição: ${response.status}`);
+        }
+
+        const result = await response.json();
+        displayResults(result);
+    } catch (error) {
+        console.error("Erro ao buscar artistas:", error);
+        resultArtist.innerHTML = `<p>Erro ao carregar resultados. Tente novamente.</p>`;
+        resultArtist.classList.remove('hidden');
+    }
 }
 
-function displayResults(result) {
-    resultPlaylist.classList.add("hidden")
+function displayResults(results) {
+    resultPlaylist.classList.add("hidden");
+
     const artistName = document.getElementById('artist-name');
     const artistImage = document.getElementById('artist-img');
 
-    result.forEach(element => {
-        artistName.innerText = element.name;
-        artistImage.src = element.urlImg;
-    });
+    artistName.innerText = '';
+    artistImage.src = '';
+
+    if (results.length > 0) {
+        const firstResult = results[0];
+        artistName.innerText = firstResult.name;
+        artistImage.src = firstResult.urlImg;
+    } else {
+        artistName.innerText = 'Nenhum artista encontrado';
+        artistImage.src = './src/assets/icons/default-artist.png';
+    }
 
     resultArtist.classList.remove('hidden');
 }
 
-document.addEventListener('input', function () {
-    const searchTerm = searchInput.value.toLowerCase();
+searchInput.addEventListener('input', function () {
+    const searchTerm = searchInput.value.trim().toLowerCase();
+
     if (searchTerm === '') {
-        resultPlaylist.classList.add('hidden');
-        resultArtist.classList.remove('hidden');
-        return
+        resultPlaylist.classList.remove('hidden');
+        resultArtist.classList.add('hidden');
+        return;
     }
-    
-    requestApi(searchTerm);
-})
+
+    clearTimeout(searchInput.debounceTimeout);
+    searchInput.debounceTimeout = setTimeout(() => {
+        requestApi(searchTerm);
+    }, 300);
+});
